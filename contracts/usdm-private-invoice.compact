@@ -30,27 +30,37 @@ import CompactStandardLibrary;
 //
 // The invoice's id/reference (public by design so counterparties can locate
 // the record) and a numeric lifecycle status:
-//   0 = PENDING  (issued, awaiting settlement)
-//   1 = PAID     (settled; final)
+//   0 = UNINITIALISED (fresh contract, no invoice yet)
+//   1 = PENDING  (issued, awaiting settlement)
+//   2 = PAID     (settled; final)
 export ledger invoiceId: Opaque<"string">;
 export ledger status: Uint<0..18446744073709551615>;
 
 /// Create a new invoice and mark it PENDING.
 ///
+/// Guard: the contract must be uninitialised (status == 0).
+/// Calling createInvoice a second time is rejected — the on-chain proof will
+/// fail at the assertion, so an already-created invoice cannot be overwritten.
+///
 /// `newInvoiceId` is disclosed on-chain so the invoice can be referenced.
 /// `amountMicroUsd` is a PRIVATE witness: it proves the invoice's stated
 /// value without ever revealing the amount on the ledger.
 export circuit createInvoice(newInvoiceId: Opaque<"string">, amountMicroUsd: Uint<0..18446744073709551615>): [] {
+    assert(status == 0, "invoice already exists");
     invoiceId = disclose(newInvoiceId);
-    status = 0x0;
+    status = 0x1;
 }
 
 /// Settle a PENDING invoice, moving it to PAID.
 ///
-/// The transition is deterministic: only PENDING -> PAID is possible, and a
-/// claim of PAID is rejected. `paidMicroUsd` is a PRIVATE witness proving the
-/// value that was settled at the application layer, again without publishing
-/// it.
+/// Guard: only a PENDING invoice (status == 1) may be settled.
+/// Calling settleInvoice on an uninitialised contract (status == 0) or on
+/// an already-PAID invoice (status == 2) is rejected — the on-chain proof
+/// will fail at the assertion, enforcing the one-way PENDING -> PAID transition.
+///
+/// `paidMicroUsd` is a PRIVATE witness proving the value that was settled
+/// at the application layer, without publishing it on the ledger.
 export circuit settleInvoice(paidMicroUsd: Uint<0..18446744073709551615>): [] {
-    status = 0x1;
+    assert(status == 1, "invoice must be PENDING to settle");
+    status = 0x2;
 }

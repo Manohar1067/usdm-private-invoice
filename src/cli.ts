@@ -216,7 +216,7 @@ async function main() {
             if (contractState) {
               const ledgerState = UsdmPrivateInvoice.ledger(contractState.data);
               const invoiceId = Buffer.from(ledgerState.invoiceId).toString();
-              const status = ledgerState.status === 0x0n ? 'PENDING' : ledgerState.status === 0x1n ? 'PAID' : String(ledgerState.status);
+              const status = ledgerState.status === 0x0n ? 'UNINITIALISED' : ledgerState.status === 0x1n ? 'PENDING' : ledgerState.status === 0x2n ? 'PAID' : String(ledgerState.status);
               console.log(`\n  📋 Invoice: "${invoiceId}" | Status: ${status}\n`);
             } else {
               console.log('\n  📋 No invoice yet (contract state empty)\n');
