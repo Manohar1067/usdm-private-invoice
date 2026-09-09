@@ -41,9 +41,9 @@ that rejects invalid moves on-chain:
 
 ## Live deployment (Midnight Preview)
 
-- Contract address: `0bfe50c2ffbf4d9d5f90bc6d26f558844da094624617d38c5159065a10bff21c`
+- Contract address: `86e94cf8c8bc5319cf4f1a031240abb89f212721d435cd1a8226ebab29299477`
 - Deployer: `mn_addr_preview1mz8gv8zau2cer7phr8thcnnj6hq6xsr5cvr5dxy7mdz53papn5ys03g5mh`
-- Deployed: `2026-09-09T07:29:51Z`
+- Deployed: `2026-09-09T08:25:08Z`
 
 ### Real on-chain interactions
 
@@ -51,8 +51,8 @@ that rejects invalid moves on-chain:
 
 | Action | Transaction id | Block height |
 | --- | --- | --- |
-| `createInvoice("INV-0001", 50000000 micro-USDM)` → PENDING | `000e0ef33b2f7b418e9001ea74e79b586dce073fc8a9269aa45a34b7e80d2a7bae` | 786918 |
-| `settleInvoice(50000000 micro-USDM)` → PAID | `0020f0718dc2cb731b26565006a23eae646e1ad2bd7f2080b1e69b925f9fb24786` | 786922 |
+| `createInvoice("INV-0001", 50000000 micro-USDM)` → PENDING | `008326e4ecaad6e30c36abccc6738216f23cc34ca68a53f6dbc1a5dce540c23027` | 787525 |
+| `settleInvoice(50000000 micro-USDM)` → PAID | `0024dfc0c48c2bbecfbaacb5d9a704fb096d7ded73a4bd99ae5638292ca381a270` | 787529 |
 
 The public ledger state on the indexer after settlement reads back:
 
@@ -89,6 +89,7 @@ npm run interact -- --network preview           # create + settle an invoice on-
 npm run negative -- --network preview           # assert invalid transitions (duplicate create, settle-after-PAID) are rejected
 npm run cli -- --network preview                # interactive CLI
 npm run test:e2e -- --network preview           # verify the deployed contract exists and is reachable
+npx tsx scripts/read-state.ts --network preview # read-only on-chain ledger state (invoiceId + status)
 ```
 
 The proof-server endpoint must be reachable (default `http://127.0.0.1:6300`),
@@ -121,4 +122,5 @@ src/cli.ts                               # interactive CLI (create/settle/read/b
 scripts/interact.ts                      # automated on-chain walkthrough (create + settle)
 scripts/negative-tests.ts                # asserts invalid transitions are rejected on-chain
 scripts/e2e-check.ts                     # sanity check against the live contract
+scripts/read-state.ts                    # read-only on-chain ledger state (invoiceId + status)
 ```
