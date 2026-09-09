@@ -1,5 +1,5 @@
 /**
- * Deploy usdm-private-invoice-app contract to a Midnight network (undeployed by default; use --network preview|preprod for public networks).
+ * Deploy usdm-private-invoice contract to a Midnight network (undeployed by default; use --network preview|preprod for public networks).
  *
  * Non-interactive: scaffold → npm run setup runs straight through.
  * No readline prompts, no .midnight-seed file.
@@ -24,8 +24,9 @@ import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-j
 globalThis.WebSocket = WebSocket;
 
 // Identifier under which this contract's private state is stored. The
-// hello-world contract has no witnesses, so its private state is empty ({}).
-const PRIVATE_STATE_ID = 'helloWorldPrivateState';
+// usdm-private-invoice contract has no private witnesses in its state, so its
+// initial private state is empty ({}); amounts flow through circuit call args.
+const PRIVATE_STATE_ID = 'usdmPrivateInvoiceState';
 
 // Upper bound on the DUST wait. A healthy local devnet produces DUST within
 // seconds of registration; anything approaching this means the node, the
@@ -77,7 +78,7 @@ async function waitForProofServer(maxAttempts = 60, delayMs = 2000): Promise<boo
 // ─── Compiled contract loading ─────────────────────────────────────────────────
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const zkConfigPath = path.resolve(__dirname, '..', 'contracts', 'managed', 'hello-world');
+const zkConfigPath = path.resolve(__dirname, '..', 'contracts', 'managed', 'usdm-private-invoice');
 const contractPath = path.join(zkConfigPath, 'contract', 'index.js');
 
 if (!fs.existsSync(contractPath)) {
@@ -85,9 +86,9 @@ if (!fs.existsSync(contractPath)) {
   process.exit(1);
 }
 
-const HelloWorld = await import(pathToFileURL(contractPath).href);
+const UsdmPrivateInvoice = await import(pathToFileURL(contractPath).href);
 
-const compiledContract = CompiledContract.make('hello-world', HelloWorld.Contract).pipe(
+const compiledContract = CompiledContract.make('usdm-private-invoice', UsdmPrivateInvoice.Contract).pipe(
   CompiledContract.withVacantWitnesses,
   CompiledContract.withCompiledFileAssets(zkConfigPath),
 );
@@ -123,7 +124,7 @@ async function createProviders(walletCtx: WalletContext) {
 
   return {
     privateStateProvider: levelPrivateStateProvider({
-      privateStateStoreName: 'hello-world-state',
+      privateStateStoreName: 'usdm-private-invoice-state',
       accountId,
       privateStoragePasswordProvider: () => privateStatePassword,
     }),
@@ -139,7 +140,7 @@ async function createProviders(walletCtx: WalletContext) {
 
 async function main() {
   console.log('\n╔══════════════════════════════════════════════════════════════╗');
-  console.log(`║  Deploy usdm-private-invoice-app to ${network}`);
+  console.log(`║  Deploy usdm-private-invoice to ${network}`);
   console.log('╚══════════════════════════════════════════════════════════════╝\n');
 
   const seed = SEED;

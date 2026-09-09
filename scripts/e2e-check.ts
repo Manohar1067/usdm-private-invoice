@@ -1,5 +1,5 @@
 /**
- * End-to-end smoke check for usdm-private-invoice-app.
+ * End-to-end smoke check for usdm-private-invoice.
  *
  * Reconnects to the deployed contract, reads its ledger state, and exits 0
  * on success. Used by `npm run test:e2e` and by the project's CI workflows.
@@ -21,8 +21,8 @@ import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-j
 // @ts-expect-error wallet sync requires WebSocket
 globalThis.WebSocket = WebSocket;
 
-// Must match the privateStateId used at deploy time (witness-free → empty state).
-const PRIVATE_STATE_ID = 'helloWorldPrivateState';
+// Must match the privateStateId used at deploy time.
+const PRIVATE_STATE_ID = 'usdmPrivateInvoiceState';
 
 // ─── Network configuration ─────────────────────────────────────────────────────
 
@@ -56,11 +56,11 @@ async function main() {
 
   // 2. Build wallet and providers
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  const zkConfigPath = path.resolve(__dirname, '..', 'contracts', 'managed', 'hello-world');
+  const zkConfigPath = path.resolve(__dirname, '..', 'contracts', 'managed', 'usdm-private-invoice');
   const contractPath = path.join(zkConfigPath, 'contract', 'index.js');
   if (!fs.existsSync(contractPath)) fail('Compiled contract missing — run `npm run compile`.');
-  const HelloWorld = await import(pathToFileURL(contractPath).href);
-  const compiledContract = CompiledContract.make('hello-world', HelloWorld.Contract).pipe(
+  const UsdmPrivateInvoice = await import(pathToFileURL(contractPath).href);
+  const compiledContract = CompiledContract.make('usdm-private-invoice', UsdmPrivateInvoice.Contract).pipe(
     CompiledContract.withVacantWitnesses,
     CompiledContract.withCompiledFileAssets(zkConfigPath),
   );
@@ -86,7 +86,7 @@ async function main() {
 
   const providers = {
     privateStateProvider: levelPrivateStateProvider({
-      privateStateStoreName: 'hello-world-state',
+      privateStateStoreName: 'usdm-private-invoice-state',
       accountId: walletCtx.unshieldedKeystore.getBech32Address().toString(),
       // SDK requires ≥16 chars. e2e-check is read-only so we don't expose
       // the env-var override here — match the deploy script's local-devnet default.

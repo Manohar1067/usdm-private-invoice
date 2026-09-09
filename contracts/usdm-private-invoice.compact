@@ -1,0 +1,56 @@
+pragma language_version >= 0.23;
+
+import CompactStandardLibrary;
+
+/// USDM Private Invoice
+///
+/// A privacy-preserving invoice record for US-Dollar ("USDM") payments on
+/// Midnight.
+///
+/// Privacy model
+/// -------------
+/// Only the invoice identifier and its lifecycle status are written to the
+/// public, visible-on-chain ledger. The invoice amount, paid amount and
+/// settlement counterparties are *private witnesses* — they participate in
+/// proof construction but never appear on the blockchain. This keeps business
+/// figures (invoice values, exposure) confidential while still making the
+/// invoice's state and its transitions provable to anyone who holds the
+/// contract address.
+///
+/// USDM resolution
+/// ---------------
+/// This contract does not mint or move USDM: Midnight has no contract-to-
+/// contract calls, and US-Dollar tokens are handled by the application layer
+/// on top of OKX's deployed USDM infrastructure (USDM bridged over Midnight's
+/// confidential assets). This contract's job is the *accounting record*: it
+/// proves that an invoice was created for a private amount, and that it was
+/// settled, while amounts stay secret.
+
+// Public ledger state — the only data visible on-chain.
+//
+// The invoice's id/reference (public by design so counterparties can locate
+// the record) and a numeric lifecycle status:
+//   0 = PENDING  (issued, awaiting settlement)
+//   1 = PAID     (settled; final)
+export ledger invoiceId: Opaque<"string">;
+export ledger status: Uint<0..18446744073709551615>;
+
+/// Create a new invoice and mark it PENDING.
+///
+/// `newInvoiceId` is disclosed on-chain so the invoice can be referenced.
+/// `amountMicroUsd` is a PRIVATE witness: it proves the invoice's stated
+/// value without ever revealing the amount on the ledger.
+export circuit createInvoice(newInvoiceId: Opaque<"string">, amountMicroUsd: Uint<0..18446744073709551615>): [] {
+    invoiceId = disclose(newInvoiceId);
+    status = 0x0;
+}
+
+/// Settle a PENDING invoice, moving it to PAID.
+///
+/// The transition is deterministic: only PENDING -> PAID is possible, and a
+/// claim of PAID is rejected. `paidMicroUsd` is a PRIVATE witness proving the
+/// value that was settled at the application layer, again without publishing
+/// it.
+export circuit settleInvoice(paidMicroUsd: Uint<0..18446744073709551615>): [] {
+    status = 0x1;
+}

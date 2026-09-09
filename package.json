@@ -1,15 +1,16 @@
 {
-  "name": "usdm-private-invoice-app",
+  "name": "usdm-private-invoice",
   "version": "1.0.0",
   "type": "module",
-  "description": "A Midnight Network application created with create-mn-app",
+  "description": "A privacy-preserving USDM invoice DApp, built on the Midnight Network",
   "author": "",
   "license": "MIT",
   "scripts": {
-    "compile": "compact compile contracts/hello-world.compact contracts/managed/hello-world",
+    "compile": "compact compile contracts/usdm-private-invoice.compact contracts/managed/usdm-private-invoice",
     "build": "npx tsc --noEmit || true",
     "setup": "npx tsx src/setup.ts",
     "deploy": "npx tsx src/deploy.ts",
+    "interact": "npx tsx scripts/interact.ts",
     "cli": "npx tsx src/cli.ts",
     "check-balance": "npx tsx src/check-balance.ts",
     "network": "npx tsx src/network.ts",
@@ -43,6 +44,9 @@
   },
   "engines": {
     "node": ">=22.0.0"
+  },
+  "overrides": {
+    "@midnight-ntwrk/onchain-runtime-v3": "3.1.1"
   },
   "keywords": ["midnight", "blockchain", "zero-knowledge", "privacy"]
 }

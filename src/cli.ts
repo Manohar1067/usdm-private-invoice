@@ -24,8 +24,9 @@ import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-j
 globalThis.WebSocket = WebSocket;
 
 // Must match the privateStateId used at deploy time so the CLI reconnects to
-// the same private state. The hello-world contract has no witnesses (empty state).
-const PRIVATE_STATE_ID = 'helloWorldPrivateState';
+// the same private state. The contract has no private witnesses in its state,
+// so initial private state is empty.
+const PRIVATE_STATE_ID = 'usdmPrivateInvoiceState';
 
 const { network, config: networkConfig } = resolveNetwork();
 const WALLET = getOrCreateWallet(network);
@@ -36,7 +37,7 @@ const SEED = WALLET.seed;
 }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const zkConfigPath = path.resolve(__dirname, '..', 'contracts', 'managed', 'hello-world');
+const zkConfigPath = path.resolve(__dirname, '..', 'contracts', 'managed', 'usdm-private-invoice');
 
 // Load compiled contract
 const contractPath = path.join(zkConfigPath, 'contract', 'index.js');
@@ -47,9 +48,9 @@ if (!fs.existsSync(contractPath)) {
   process.exit(1);
 }
 
-const HelloWorld = await import(pathToFileURL(contractPath).href);
+const UsdmPrivateInvoice = await import(pathToFileURL(contractPath).href);
 
-const compiledContract = CompiledContract.make('hello-world', HelloWorld.Contract).pipe(
+const compiledContract = CompiledContract.make('usdm-private-invoice', UsdmPrivateInvoice.Contract).pipe(
   CompiledContract.withVacantWitnesses,
   CompiledContract.withCompiledFileAssets(zkConfigPath),
 );
@@ -85,7 +86,7 @@ async function createProviders(walletCtx: WalletContext) {
 
   return {
     privateStateProvider: levelPrivateStateProvider({
-      privateStateStoreName: 'hello-world-state',
+      privateStateStoreName: 'usdm-private-invoice-state',
       accountId,
       privateStoragePasswordProvider: () => privateStatePassword,
     }),
@@ -101,7 +102,7 @@ async function createProviders(walletCtx: WalletContext) {
 
 async function main() {
   console.log('\n╔══════════════════════════════════════════════════════════════╗');
-  console.log('║                   usdm-private-invoice-app CLI                           ║');
+  console.log('║                   usdm-private-invoice CLI                            ║');
   console.log('╚══════════════════════════════════════════════════════════════╝\n');
 
   const rl = createInterface({ input: stdin, output: stdout });
@@ -170,20 +171,22 @@ async function main() {
     let running = true;
     while (running) {
       console.log('─── Menu ───────────────────────────────────────────────────────');
-      console.log('  1. Store a message');
-      console.log('  2. Read current message');
-      console.log('  3. Check wallet balance');
-      console.log('  4. Exit\n');
+      console.log('  1. Create invoice (PENDING)');
+      console.log('  2. Settle invoice (PENDING -> PAID)');
+      console.log('  3. Read current invoice state');
+      console.log('  4. Check wallet balance');
+      console.log('  5. Exit\n');
 
       const choice = await rl.question('  Your choice: ');
 
       switch (choice.trim()) {
         case '1': {
-          const message = await rl.question('  Enter your message: ');
+          const invoiceId = await rl.question('  Invoice reference (public): ');
+          const amount = await rl.question('  Amount (micro-USDM, PRIVATE witness): ');
           console.log('\n  Submitting transaction (this may take 30-60 seconds)...');
           try {
-            const tx = await deployed.callTx.storeMessage(message);
-            console.log(`\n  ✅ Message stored: "${message}"`);
+            const tx = await deployed.callTx.createInvoice(invoiceId, BigInt(amount));
+            console.log(`\n  ✅ Invoice "${invoiceId}" created (PENDING)`);
             console.log(`  Transaction ID: ${tx.public.txId}`);
             console.log(`  Block height: ${tx.public.blockHeight}\n`);
           } catch (error) {
@@ -193,16 +196,13 @@ async function main() {
         }
 
         case '2': {
-          console.log('\n  Reading message from blockchain...');
+          const amount = await rl.question('  Settled amount (micro-USDM, PRIVATE witness): ');
+          console.log('\n  Submitting transaction (this may take 30-60 seconds)...');
           try {
-            const contractState = await providers.publicDataProvider.queryContractState(deployment.address);
-            if (contractState) {
-              const ledgerState = HelloWorld.ledger(contractState.data);
-              const message = Buffer.from(ledgerState.message).toString();
-              console.log(`\n  📋 Current message: "${message}"\n`);
-            } else {
-              console.log('\n  📋 No message found (contract state empty)\n');
-            }
+            const tx = await deployed.callTx.settleInvoice(BigInt(amount));
+            console.log(`\n  ✅ Invoice settled (PAID)`);
+            console.log(`  Transaction ID: ${tx.public.txId}`);
+            console.log(`  Block height: ${tx.public.blockHeight}\n`);
           } catch (error) {
             console.error('\n  ❌ Failed:', error instanceof Error ? error.message : error);
           }
@@ -210,6 +210,24 @@ async function main() {
         }
 
         case '3': {
+          console.log('\n  Reading invoice state from blockchain...');
+          try {
+            const contractState = await providers.publicDataProvider.queryContractState(deployment.address);
+            if (contractState) {
+              const ledgerState = UsdmPrivateInvoice.ledger(contractState.data);
+              const invoiceId = Buffer.from(ledgerState.invoiceId).toString();
+              const status = ledgerState.status === 0x0n ? 'PENDING' : ledgerState.status === 0x1n ? 'PAID' : String(ledgerState.status);
+              console.log(`\n  📋 Invoice: "${invoiceId}" | Status: ${status}\n`);
+            } else {
+              console.log('\n  📋 No invoice yet (contract state empty)\n');
+            }
+          } catch (error) {
+            console.error('\n  ❌ Failed:', error instanceof Error ? error.message : error);
+          }
+          break;
+        }
+
+        case '4': {
           console.log('\n  Checking balance...');
           const currentState = await walletCtx.wallet.waitForSyncedState();
           const currentBalance = currentState.unshielded.balances[unshieldedToken().raw] ?? 0n;
@@ -219,13 +237,13 @@ async function main() {
           break;
         }
 
-        case '4':
+        case '5':
           running = false;
           console.log('\n  👋 Goodbye!\n');
           break;
 
         default:
-          console.log('\n  ❌ Invalid choice. Please enter 1-4.\n');
+          console.log('\n  ❌ Invalid choice. Please enter 1-5.\n');
       }
     }
 
